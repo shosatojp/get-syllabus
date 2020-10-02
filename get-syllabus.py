@@ -2,6 +2,8 @@
 import sys
 import os
 from selenium.webdriver import Chrome, ChromeOptions
+import shutil
+import time
 
 
 class SyllabusGetter():
@@ -11,6 +13,12 @@ class SyllabusGetter():
 
         options = ChromeOptions()
         options.add_argument(f'--proxy-server=socks5://localhost:{socks_proxy_port}')
+        options.add_experimental_option('prefs', {
+            "download.default_directory": os.path.abspath('.'),
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "plugins.always_open_pdf_externally": True
+        })
 
         self.chrome = Chrome(options=options)
         self.chrome.get('https://campusweb.office.uec.ac.jp/campusweb/')
@@ -18,10 +26,17 @@ class SyllabusGetter():
         self.chrome.find_element_by_id('password').send_keys(password)
         self.chrome.find_element_by_name('_eventId_proceed').click()
 
-    def get_syllabus(self, subject_num: str):
+    def get_syllabus(self, subject_num: str, pdf=True):
         self.chrome.get('https://campusweb.office.uec.ac.jp/campusweb/campussquare.do?_flowId=SYW0001000-flow')
         self.chrome.find_element_by_id('jikanwaricd').send_keys(subject_num)
         self.chrome.find_element_by_css_selector('#jikanwariInputForm input[type=button]').click()
+        if pdf:
+            self.chrome.find_element_by_css_selector('input[value="PDF出力"]').click()
+            default_name = 'syllabusPdfList.pdf'
+            if os.path.exists(default_name):
+                os.remove(default_name)
+            time.sleep(1)
+            shutil.move(default_name, f'{subject_num}.pdf')
         return self.chrome.execute_script('return document.body.innerHTML;')
 
     def __enter__(self):
